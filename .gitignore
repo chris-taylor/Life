@@ -1,0 +1,5 @@
+# GHC files
+
+*.hi
+*.o
+*.exe
