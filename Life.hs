@@ -32,12 +32,6 @@ instance Comonad Grid where
     extract (Grid i _ arr) = arr ! i
     duplicate (Grid i bds arr) = Grid i bds $ listArray bds $ map (\j -> Grid j bds arr) (range bds)
 
-showLife (Grid _ bds arr) =
-    let (a,b)   = fst bds
-        (a',b') = snd bds
-        es = elems arr
-     in undefined
-
 cut n [] = []
 cut n xs = take n xs : cut n (drop n xs)
 
@@ -60,9 +54,6 @@ rule (Grid i (_,sz) arr) = ruleImpl (arr!i) numLiveNbrs
         ruleImpl O n | n == 3         = I -- dead cell with three live nbrs comes alive
                      | otherwise      = O -- otherwise continues to be dead
 
-runLife :: Grid Cell -> Grid Cell
-runLife z = z =>> rule
-
 -- Grids --
 
 update (Grid i b arr) xs = Grid i b (arr // map (,I) xs)
@@ -82,18 +73,12 @@ randomGrid n = do cells <- replicateM ((n+1)*(n+1)) (choose I O)
 
 -- Run --
 
+-- e.g. runR 100 20
+
 frameRate :: Int
 frameRate = 25
 
-runR n k = do grid <- randomGrid k
-              if n == 0
-                then return ()
-                else do putStrLn (showGrid grid)
-                        putStrLn "---"
-                        threadDelay delayTimeMicroSecs
-                        run (n-1) (grid =>> rule)
-            where
-                delayTimeMicroSecs = round $ 1000000 * (1/fromIntegral frameRate)
+runR n k = randomGrid k >>= run n
 
 run n grid = if n == 0
                 then return ()
