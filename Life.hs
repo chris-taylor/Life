@@ -79,6 +79,6 @@ run n grid = when (n > 0) $ do putStrLn (showGrid grid)
                                threadDelay delayTimeMicroSecs
                                run (n-1) (grid =>> rule)
             where
-                delayTimeMicroSecs = round $ 1000000 * (1/fromIntegral frameRate)
+                delayTimeMicroSecs = round (1e6 / frameRate)
                 frameRate = 25
 
