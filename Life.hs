@@ -39,10 +39,11 @@ showGrid (Grid _ ((_,b),(_,b')) arr) = L.intercalate "\n" $ cut (b'-b+1) $ map t
 
 -- Rules of Life --
 
+wrap (m,n) (i,j) = (mod i (m+1), mod j (n+1))
+
 neighbours :: Idx -> Idx -> [Idx]
-neighbours (m,n) (i,j) =
-    map (\(a,b) -> (mod a (m+1), mod b (n+1))) $
-        [(i+1,j), (i-1,j), (i,j+1), (i,j-1), (i+1,j+1), (i-1,j-1), (i+1,j-1), (i-1,j+1)]
+neighbours sz (i,j) =
+    [wrap sz (i+p,j+q) | p <- [-1,0,1], q <- [-1,0,1], (p,q) /= (0,0)]
 
 rule :: Grid Cell -> Cell
 rule (Grid i (_,sz) arr) = ruleImpl (arr!i) numLiveNbrs
@@ -57,9 +58,7 @@ rule (Grid i (_,sz) arr) = ruleImpl (arr!i) numLiveNbrs
 -- Grids --
 
 update (Grid i b arr) xs = Grid i b (arr // map (,I) xs)
-
 blank n = life (0,0) $ listArray ((0,0),(n,n)) (repeat O)
-
 blinkerV (p,q) grid = update grid $ [(p-1,q), (p,q), (p+1,q)]
 blinkerH (p,q) grid = update grid $ [(p,q-1), (p,q), (p,q+1)]
 block (p,q) grid = update grid $ [(p,q), (p+1,q), (p,q+1), (p+1,q+1)]
@@ -71,21 +70,15 @@ choose a b = do z <- getRandomR (0.0, 1.0 :: Float)
 randomGrid n = do cells <- replicateM ((n+1)*(n+1)) (choose I O)
                   return $ life (0,0) $ listArray ((0,0),(n,n)) cells
 
--- Run --
-
--- e.g. runR 100 20
-
-frameRate :: Int
-frameRate = 25
+-- Run -- (e.g. runR 100 20)
 
 runR n k = randomGrid k >>= run n
 
-run n grid = if n == 0
-                then return ()
-                else do putStrLn (showGrid grid)
-                        putStrLn "---"
-                        threadDelay delayTimeMicroSecs
-                        run (n-1) (grid =>> rule)
+run n grid = when (n > 0) $ do putStrLn (showGrid grid)
+                               putStrLn "---"
+                               threadDelay delayTimeMicroSecs
+                               run (n-1) (grid =>> rule)
             where
                 delayTimeMicroSecs = round $ 1000000 * (1/fromIntegral frameRate)
+                frameRate = 25
 
