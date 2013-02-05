@@ -1,9 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable, TupleSections #-}
-
 module Life where
 
 import Control.Monad
-import Control.Monad.Random
 import Control.Comonad
 import Control.Concurrent
 import Data.Array
@@ -13,9 +10,6 @@ data Cell = O | I deriving (Eq,Ord,Show)
 
 toc O = ' '
 toc I = '#'
-
-toi O = 0
-toi I = 1
 
 type Idx = (Int,Int)
 type Bds = (Idx,Idx)
@@ -30,7 +24,7 @@ instance Functor Grid where
 
 instance Comonad Grid where
     extract (Grid i _ arr) = arr ! i
-    duplicate (Grid i bds arr) = Grid i bds $ listArray bds $ map (\j -> Grid j bds arr) (range bds)
+    duplicate (Grid i bds arr) = Grid i bds $ listArray bds $ map (\j -> Grid j bds arr) $ range bds
 
 cut n [] = []
 cut n xs = take n xs : cut n (drop n xs)
@@ -48,37 +42,19 @@ neighbours sz (i,j) =
 rule :: Grid Cell -> Cell
 rule (Grid i (_,sz) arr) = ruleImpl (arr!i) numLiveNbrs
     where
-        numLiveNbrs = sum $  map (toi . (arr!)) $ neighbours sz i
+        numLiveNbrs = length $ filter (==I) $ map (arr!) $ neighbours sz i
 
-        ruleImpl I n | n < 2 || n > 3 = O -- live cell with fewer than 2/more than 3 live nbrs dies
-                     | otherwise      = I -- otherwise it lives to the next generation
-        ruleImpl O n | n == 3         = I -- dead cell with three live nbrs comes alive
-                     | otherwise      = O -- otherwise continues to be dead
+        ruleImpl c n | n == 2    = c -- cell with 2 live nbrs stays the same
+                     | n == 3    = I -- cell with 3 live nbrs comes alive (or remains alive)
+                     | otherwise = O -- otherwise cell dies (or remains dead)
 
--- Grids --
+-- Run -- 
 
-update (Grid i b arr) xs = Grid i b (arr // map (,I) xs)
-blank n = life (0,0) $ listArray ((0,0),(n,n)) (repeat O)
-blinkerV (p,q) grid = update grid $ [(p-1,q), (p,q), (p+1,q)]
-blinkerH (p,q) grid = update grid $ [(p,q-1), (p,q), (p,q+1)]
-block (p,q) grid = update grid $ [(p,q), (p+1,q), (p,q+1), (p+1,q+1)]
-glider (p,q) grid = update grid $ [(p,q), (p,q-1), (p,q-2), (p+1,q),(p+2,q-1)]
-
-choose a b = do z <- getRandomR (0.0, 1.0 :: Float)
-                return (if z < 0.5 then a else b)
-
-randomGrid n = do cells <- replicateM ((n+1)*(n+1)) (choose I O)
-                  return $ life (0,0) $ listArray ((0,0),(n,n)) cells
-
--- Run -- (e.g. runR 100 20)
-
-runR n k = randomGrid k >>= run n
-
-run n grid = when (n > 0) $ do putStrLn (showGrid grid)
-                               putStrLn "---"
-                               threadDelay delayTimeMicroSecs
-                               run (n-1) (grid =>> rule)
-            where
-                delayTimeMicroSecs = round (1e6 / frameRate)
-                frameRate = 25
+run n frameRate grid =
+    when (n > 0) $ do putStrLn (replicate 10 '\n')
+                      putStrLn (showGrid grid)
+                      threadDelay delayTimeMicroSecs
+                      run (n-1) frameRate (grid =>> rule)
+                  where
+                      delayTimeMicroSecs = round (1e6 / fromIntegral frameRate)
 
